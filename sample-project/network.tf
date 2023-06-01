@@ -86,9 +86,15 @@ resource "aws_internet_gateway" "igw" {
   }
 }
 
+#creating private NAT GW
+resource "aws_nat_gateway" "private_NAT_GW" {
+  connectivity_type = "private"
+  subnet_id         = aws_subnet.privsubnet1.id
+}
+
 #creating pub route table
 resource "aws_route_table" "public_RT" {
-  vpc_id = aws_vpc.public_RT.id
+  vpc_id = aws_vpc.my_vpc.id
 
   route {
     cidr_block = "0.0.0.0/0"
@@ -111,28 +117,73 @@ resource "aws_route_table_association" "pubsubnet2assoc" {
   route_table_id = aws_route_table.public_RT.id
 }
 
-# #creating priv route table(gateway_id = NAT GW)
-# resource "aws_route_table" "private_RT" {
-#   vpc_id = aws_vpc.public_RT.id
+#creating priv route table(gateway_id = NAT GW)
+resource "aws_route_table" "private_RT" {
+  vpc_id = aws_vpc.my_vpc.id
 
-#   route {
-#     cidr_block = "0.0.0.0/0"
-#     gateway_id = aws_internet_gateway.igw.id
-#   }
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_nat_gateway.private_NAT_GW.id
+  }
 
-#   tags = {
-#     Name = "${var.vpc_name_tag}-private-RT"
-#   }
-# }
+  tags = {
+    Name = "${var.vpc_name_tag}-private-RT"
+  }
+}
 
-# #private subnets route table association
-# resource "aws_route_table_association" "privsubnet1assoc" {
-#   subnet_id      = aws_subnet.privsubnet1.id
-#   route_table_id = aws_route_table.private_RT.id
-# }
+#private subnets route table association
+resource "aws_route_table_association" "privsubnet1assoc" {
+  subnet_id      = aws_subnet.privsubnet1.id
+  route_table_id = aws_route_table.private_RT.id
+}
 
-# resource "aws_route_table_association" "pubsubnet2assoc" {
-#   subnet_id      = aws_subnet.privsubnet2.id
-#   route_table_id = aws_route_table.private_RT.id
-# }
+resource "aws_route_table_association" "pubsubnet2assoc" {
+  subnet_id      = aws_subnet.privsubnet2.id
+  route_table_id = aws_route_table.private_RT.id
+}
+
+#creating security groups
+resource "aws_security_group" "web_sg" {
+  name        = "web_sg"
+  description = "Allow https/http/ssh inbound traffic"
+  vpc_id      = aws_vpc.my_vpc.id
+
+  ingress {
+    description = "allow https traffic from internet"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "allow http traffic from internet"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "web_sg"
+  }
+}
+
+resource "aws_security_group" "ssh_sg" {
+  name        = "ssh_sg"
+  description = "Allow ssh inbound traffic"
+  vpc_id      = aws_vpc.my_vpc.id
+  
+  ingress {
+    description = "allow ssh traffic from internet"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "ssh_sg"
+  }
+}
 
