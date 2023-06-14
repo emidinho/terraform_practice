@@ -6,34 +6,35 @@ locals {
   dbprivate_subnets = [aws_subnet.dbprivsubnet1.id, aws_subnet.dbprivsubnet2.id]
 
   project_tags = {
+    Name  = "server"
     Owner = "emidio"
     email = "emidioalemnju@gmail.com"
-    time = formatdate("DD MMM YYYY hh:mm ZZZ", timestamp())
+    time  = formatdate("DD MMM YYYY hh:mm ZZZ", timestamp())
   }
 }
 
 #creating instances in public and private subnets
-resource "aws_instance" "pub_ec2_1" {
+resource "aws_instance" "pub_ec2" {
   count = length(var.public_ami_ids)
 
   ami                    = var.public_ami_ids[count.index]
   instance_type          = var.public_instance_type[count.index]
   subnet_id              = local.public_subnets[count.index]
-  vpc_security_group_ids = [aws_security_group.pubsubnet-sg.id]
-  user_data              = "${file("user_data.sh")}"
+  vpc_security_group_ids = [aws_security_group.pub_server-sg.id]
+  user_data              = file("user_data.sh")
 
   tags = {
     Name = local.project_tags
   }
 }
 
-resource "aws_instance" "priv_ec2_1" {
+resource "aws_instance" "priv_ec2" {
   count = length(var.private_ami_ids)
 
-  ami           = var.private_ami_ids[count.index]
-  instance_type = var.private_instance_type[count.index]
-  subnet_id     = local.private_subnets[count.index]
-  vpc_security_group_ids = [aws_security_group.privsubnet-sg.id]
+  ami                    = var.private_ami_ids[count.index]
+  instance_type          = var.private_instance_type[count.index]
+  subnet_id              = local.private_subnets[count.index]
+  vpc_security_group_ids = [aws_security_group.priv_server-sg.id]
 
   tags = {
     Name = local.project_tags
@@ -41,51 +42,36 @@ resource "aws_instance" "priv_ec2_1" {
 }
 
 #creating security groups for instances in public and private subnets
-resource "aws_security_group" "pubsubnet-sg" {
-  name        = "web-sg"
-  description = "Allow http/https/ssh traffic"
+resource "aws_security_group" "pub_server-sg" {
+  name        = "pub_server-sg"
+  description = "Ingress sg for pubec2 allows http/https/ssh traffic"
   vpc_id      = aws_vpc.my_vpc.id
-
-  ingress {
-    description = "allow https traffic from internet"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+  dynamic "ingress" {
+    for_each = [80, 443, 22]
+    iterator = port
+    content {
+      from_port   = port.value
+      to_port     = port.value
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
   }
-
-  ingress {
-    description = "allow http traffic from internet"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "allow ssh traffic from internet"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
   tags = {
     Name = "pubsubnet-sg"
   }
 }
 
-resource "aws_security_group" "privsubnet_sg" {
-  name        = "privsubnet_sg"
+resource "aws_security_group" "priv_server-sg" {
+  name        = "priv_server-sg"
   description = "Allow ssh inbound traffic"
   vpc_id      = aws_vpc.my_vpc.id
-  
+
   ingress {
-    description = "allow ssh traffic from internet"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    description     = "allow ssh traffic from internet"
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    security_groups = [aws_security_group.pubsubnet-sg.id]
   }
 
   tags = {
@@ -112,14 +98,13 @@ resource "aws_security_group" "db_sg" {
     from_port   = 3306
     to_port     = 3306
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # Allow access from anywhere (not recommended for production)
+    cidr_blocks = ["0.0.0.0/0"] # Allow access from anywhere (not recommended for production)
   }
-
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]  # Allow outbound traffic to anywhere (modify as per your requirements)
+    cidr_blocks = ["0.0.0.0/0"] # Allow outbound traffic to anywhere (modify as per your requirements)
   }
 }
 
@@ -131,7 +116,7 @@ resource "aws_db_instance" "project_db" {
   publicly_accessible    = true
   engine                 = "mysql"
   engine_version         = "8.0.32"
-  instance_class         = "db.t3.micro"
+  instance_class         = "db.t2.micro"
   db_name                = var.db_name
   username               = var.username
   password               = var.password

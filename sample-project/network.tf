@@ -16,7 +16,7 @@ resource "aws_subnet" "pubsubnet1" {
   availability_zone       = var.pubsubnet1AZ
 
   tags = {
-    Name = var.pubsubnet1_name_tag
+    Name = "${var.vpc_name_tag}-pubsubnet1"
   }
 }
 
@@ -27,7 +27,7 @@ resource "aws_subnet" "pubsubnet2" {
   availability_zone       = var.pubsubnet2AZ
 
   tags = {
-    Name = var.pubsubnet2_name_tag
+    Name = "${var.vpc_name_tag}-pubsubnet2"
   }
 }
 
@@ -39,7 +39,7 @@ resource "aws_subnet" "privsubnet1" {
   availability_zone       = var.privsubnet1AZ
 
   tags = {
-    Name = var.privsubnet1_name_tag
+    Name = "${var.vpc_name_tag}-privsubnet1"
   }
 }
 
@@ -50,7 +50,7 @@ resource "aws_subnet" "privsubnet2" {
   availability_zone       = var.privsubnet2AZ
 
   tags = {
-    Name = var.privsubnet2_name_tag
+    Name = "${var.vpc_name_tag}-privsubnet2"
   }
 }
 
@@ -62,7 +62,7 @@ resource "aws_subnet" "dbprivsubnet1" {
   availability_zone       = var.dbprivsubnet1AZ
 
   tags = {
-    Name = var.dbprivsubnet1_name_tag
+    Name = "${var.vpc_name_tag}-dbprivsubnet1"
   }
 }
 
@@ -73,7 +73,7 @@ resource "aws_subnet" "dbprivsubnet2" {
   availability_zone       = var.dbprivsubnet2AZ
 
   tags = {
-    Name = var.dbprivsubnet2_name_tag
+    Name = "${var.vpc_name_tag}-dbprivsubnet2"
   }
 }
 
@@ -142,48 +142,5 @@ resource "aws_route_table_association" "pubsubnet2assoc" {
   route_table_id = aws_route_table.private_RT.id
 }
 
-#creating security groups
-resource "aws_security_group" "web_sg" {
-  name        = "web_sg"
-  description = "Allow https/http/ssh inbound traffic"
-  vpc_id      = aws_vpc.my_vpc.id
 
-  ingress {
-    description = "allow https traffic from internet"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "allow http traffic from internet"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "web_sg"
-  }
-}
-
-resource "aws_security_group" "ssh_sg" {
-  name        = "ssh_sg"
-  description = "Allow ssh inbound traffic"
-  vpc_id      = aws_vpc.my_vpc.id
-  
-  ingress {
-    description = "allow ssh traffic from internet"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "ssh_sg"
-  }
-}
 
